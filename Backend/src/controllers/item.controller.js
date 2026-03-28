@@ -6,6 +6,7 @@ import { getYoutubeMeta, detectType, cleanYoutubeUrl, getUnsplashFromImage, getT
 
 import ogs from 'open-graph-scraper'
 import { response } from "express";
+import { aiChat } from "../services/ai.service.js";
 
 export async function createItem(req, res) {
     try {
@@ -77,7 +78,6 @@ export async function createItem(req, res) {
                 console.log("Image processed successfully:", { title, thumbnail });
 
 
-
             }
             catch (err) {
                 console.error("Error processing direct image:", err.message);
@@ -135,6 +135,12 @@ export async function createItem(req, res) {
 
 
 
+     let tags =    await aiChat({title,description})
+
+
+     
+
+
         // 🔹 Create item
         const item = await itemModel.create({
             userId,
@@ -142,7 +148,9 @@ export async function createItem(req, res) {
             type,
             title,
             content: description,
-            thumbnail
+            thumbnail,
+            tags,
+            lastViewdAt : new Date()
         });
 
         return res.status(201).json({
@@ -165,98 +173,118 @@ export async function createItem(req, res) {
 
 
 export async function getItem(req, res) {
-
-
     try {
-        let isFavorite;
         const userId = req.user.id;
+
+        // 📄 Pagination
         const page = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
-        const { collectionId, search,type,favorite } = req.query;
+        const skip = (page - 1) * limit;
 
-        const skip = (page - 1) * limit; //10
+        // 📥 Query params
+        const {
+            collectionId,
+            search,
+            type,
+            favorite,
+            tag,
+            sort
+        } = req.query;
 
-        
+        // 🔍 Base filter
+        const filter = { userId };
 
-        const filter = { userId }
-
-
-        isFavorite =  favorite
-        
-
-
-
-
+        // 🔎 Text search
         if (search && search.trim() !== "") {
             filter.$text = { $search: search };
         }
 
-        let sortOption = { createdAt: -1 };
-
-
-        if (search && search.trim() !== "") {
-            sortOption = { score: { $meta: "textScore" } };
-        }
-
-
+        // 📂 Collection filter
         if (collectionId !== undefined) {
             if (collectionId === "null") {
-                filter.collectionId = null
-            }
-            else {
-                filter.collectionId = collectionId
-            }
-        }
-
-        if(type !== undefined){
-            if(type === "null"){
-                filter.type = type
-            }
-            else{
-                filter.type = type
+                filter.collectionId = null;
+            } else {
+                filter.collectionId = collectionId;
             }
         }
 
-       
-        if(isFavorite !== undefined){
-            if(isFavorite === "null"){
-                filter.isFavorite = isFavorite
-            }
-            else{
-                filter.isFavorite = isFavorite
+        // 📌 Type filter
+        if (type && type !== "null") {
+            filter.type = type;
+        }
+
+        // ⭐ Favorite filter (string → boolean)
+        if (favorite === "true") {
+            filter.isFavorite = true;
+        } else if (favorite === "false") {
+            filter.isFavorite = false;
+        }
+
+        // 🏷️ Tag filter ($in)
+        if (tag && tag !== "null") {
+            const tagArray = tag
+                .split(",")
+                .map(t => t.trim())
+                .filter(Boolean); // remove empty values
+
+            if (tagArray.length > 0) {
+                filter.tags = { $in: tagArray };
             }
         }
 
+        // 🔃 Sorting (default = recent)
+        let sortOption = { createdAt: -1 };
 
+        if (sort === "recent") {
+            sortOption = { createdAt: -1 };
+        } 
+        else if (sort === "oldest") {
+            sortOption = { createdAt: 1 };
+        } 
+        else if (sort === "favorite") {
+            sortOption = { isFavorite: -1, createdAt: -1 };
+        } 
+        else if (sort === "viewed") {
+            sortOption = { lastViewedAt: -1, createdAt: -1 };
+        }
 
-        
-        const items = await itemModel.find(filter).sort(sortOption).skip(skip).limit(limit);
+        // 🧠 Optional: prioritize text score when searching
+        // if (search && search.trim() !== "") {
+        //     sortOption = { score: { $meta: "textScore" } };
+        // }
+
+        // 🚀 Query execution
+        const items = await itemModel
+            .find(filter)
+            .sort(sortOption)
+            .skip(skip)
+            .limit(limit);
+
         const totalItems = await itemModel.countDocuments(filter);
 
-
-
-
-
-
-
-
-        res.status(200).json({
-            message: "Items retrieved successfully",
+        // ✅ Response
+        return res.status(200).json({
             success: true,
-            page: page,
-            limit: limit,
-            items: items,
-            totalItems: totalItems,
-            totalPages: Math.ceil(totalItems / limit)
-        })
+            message: "Items retrieved successfully",
+            page,
+            limit,
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            items
+        });
+
+    } catch (err) {
+        console.error("GET ITEMS ERROR:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: err.message
+        });
     }
-    catch (err) {
-        res.status(500).json({ message: "Server error", success: false, error: err.message })
-    }
-
-
-
 }
+
+
 
 
 export async function updateItem(req, res) {

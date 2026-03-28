@@ -12,6 +12,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@langchain/core": "^1.1.36",
+    "@langchain/mistralai": "^1.0.7",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "cheerio": "^1.2.0",
