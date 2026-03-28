@@ -24,5 +24,12 @@ createItemRouter.patch("/update-item/:id",authMiddleware,itemController.updateIt
 createItemRouter.delete("/delete-item/:id",authMiddleware,itemController.deleteItem)
 
 
+createItemRouter.get("/:index/recommendations",authMiddleware,itemController.getRecommendations)
+
+
+
+createItemRouter.get("/recent",authMiddleware,itemController.getRecentItems)
+
+
 
 export default createItemRouter;

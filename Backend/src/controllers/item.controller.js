@@ -362,3 +362,106 @@ export async function deleteItem(req, res) {
         res.status(500).json({ message: "Server error", success: false, error: err.message })
     }
 }
+
+
+export async function getRecommendations(req,res){
+
+   try{
+     const userId  =  req.user.id;
+
+
+   const id = req.params.index;
+
+
+
+    const currentItem =  await itemModel.findOne({
+          _id : id,
+          userId  : userId
+    })
+
+
+
+    if(!currentItem){
+        return res.status(404).json({
+            message : "Item not found",
+            success :false,
+
+        })
+    }
+
+
+    const tags  = currentItem.tags;
+
+    if(!tags|| tags.length === 0){
+        return res.status(200).json({
+            success : true,
+            items : []
+        })
+    }
+
+
+    const recommendation =  await  itemModel.find({
+        userId : userId,
+        tags  : {$in : tags}
+    })
+    .sort({createdAt : -1})
+    .limit(5)
+
+    console.log(recommendation)
+
+
+    res.status(200).json({
+        success : true,
+         items : {
+            id  : recommendation[0].id,
+            title  : recommendation[0].title,
+            thumbnail : recommendation[0].thumbnail,
+            type : recommendation[0].type
+         }
+    })
+   }
+
+   catch(err){
+    res.status(500).json({
+        message :  "Server error",
+        success  :false,
+        error : err.message
+    })
+   }
+
+
+}
+
+
+export async function getRecentItems(req,res){
+  try{
+      const userId   =  req.user.id;
+
+      console.log(userId)
+
+
+   
+      const items =  await itemModel.find({
+        userId  : userId,
+        lastViewdAt: { $exists: true, $ne: null }
+      })
+
+    console.log(items)
+
+
+    res.status(200).json({
+        success : true,
+        items
+    })
+  }
+  catch(err){
+    res.status(500).json({
+        success : false,
+        message :  "Server error",
+        error  : err.message
+    })
+  }
+
+
+
+}
