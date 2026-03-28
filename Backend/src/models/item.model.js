@@ -10,7 +10,7 @@ const itemSchema  = new mongoose.Schema({
 
     type : {
         type : String,
-        enum : ["youtube","twitter","image","pdf","article"],
+        enum : ["youtube","x","image","pdf","article"],
         default : "article"
     },
 
@@ -49,7 +49,7 @@ const itemSchema  = new mongoose.Schema({
 itemSchema.index({ userId: 1, url  : 1},{unique:true});
 itemSchema.index({ tags: 1 });
 itemSchema.index({ userId: 1, isFavorite: 1 });
-itemSchema.index({ title: "text", content: "text" });
+itemSchema.index({ title: "text", content: "text" ,tags :"text"});
 
 const   itemModel =  mongoose.model("Item",itemSchema)
 

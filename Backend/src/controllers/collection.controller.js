@@ -14,7 +14,6 @@ export async function createCollection(req, res) {
 
         const userId = req.user.id;
 
-        console.log("User ID from token:", userId,name); // Debugging line to check userId,
 
         if (!name) {
             return res.status(400).json({
@@ -22,6 +21,7 @@ export async function createCollection(req, res) {
                 success: false
             })
         }
+
         const existingCollection = await collectionModel.findOne({ userId, name });
 
 
@@ -59,9 +59,12 @@ export async function createCollection(req, res) {
 export async function getCollections(req, res) {
     try{
         const userId =  req.user.id;
+    
 
-        const collections  = await collectionModel.find({userId : userId}).sort({createdAt : -1})
-
+  
+   
+       let collections = await collectionModel.find({userId : userId})
+      
         res.status(200).json({
             message : "Collections retrieved successfully",
             success : true,
@@ -85,7 +88,9 @@ export async function deleteCollection(req, res) {
                 message : "Collection not found or you are not authorized to delete this collection",
                 success : false
             })
-        }                                   
+        }   
+        
+        const deleteItems =  await itemModel.updateMany({collectionId : id,userId : userId},{ $set : {collectionId : null} })
 
         res.status(200).json({
             message : "Collection deleted successfully",
